@@ -82,6 +82,30 @@ todoSocket.put('todos/1', {id: 2, description: 'Something else', done: false})
 todoSocket.remove('todos/1');
 ```
 
+### Message Pattern
+
+The message pattern is what will be sent to the server and what the server should be sending back to the client.
+
+```js
+{
+	resource: '/todos/123',
+	method: 'PATCH',
+	payload: {
+		description: 'This other thing'
+	}
+}
+```
+
+Error messages from the server look like this:
+
+```js
+{
+	resource: '/todos/123',
+	method: 'PATCH',
+	error: 'Could not rename "This thing" to "This other thing".'
+}
+```
+
 ## Extras / Debugging
 
 `todoSocket.getPaths()` returns your client-side REST API in JSON form.
