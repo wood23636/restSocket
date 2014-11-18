@@ -22,8 +22,7 @@ var todoSocket = new restSocket({
 	authToken: function(){
 		// logic to get an authToken
 		// this function can be replaced with a simple string
-		var authTokens = ['455B1D51-CC4C-40C1-BEFB-579CD18D905B','BE234574-6945-410C-BB60-8C6A9E3CACD8','32648C0C-3E0C-43F0-9EE9-64ECEE7EA6C6','791911F6-F14F-4268-A823-60F6302E40C8'];
-		return authTokens[_.random(0, authTokens.length-1)];
+		return '455B1D51-CC4C-40C1-BEFB-579CD18D905B';
 	},
 	success: function(){
 		// stuff to do after connection is authorized
@@ -85,15 +84,15 @@ todoSocket.remove('todos/1');
 
 ## Extras / Debugging
 
-`MyRestSocket.getPaths()` returns your client-side REST API in JSON form.
+`todoSocket.getPaths()` returns your client-side REST API in JSON form.
 
-`MyRestSocket.getRawSocket()` returns the raw WebSocket (current connection).
+`todoSocket.getRawSocket()` returns the raw WebSocket (current connection).
 
-`MyRestSocket.getReadyState()` returns whether the connection is ready for requests.
+`todoSocket.getReadyState()` returns whether the connection is ready for requests.
 
-`MyRestSocket.getRequestQueue()` returns the current request queue.
+`todoSocket.getRequestQueue()` returns the current request queue.
 
-`MyRestSocket.reopen()` will attempt to reopen the restSocket connection.
+`todoSocket.reopen()` will attempt to reopen the restSocket connection.
 
 ## Supported Methods
 - GET
