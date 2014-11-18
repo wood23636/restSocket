@@ -1,6 +1,6 @@
 /*!
  * RestSocket
- * https://github.com/bracketdash/restsocket
+ * https://github.com/bracketdash/restSocket
  * 
  * A library for:
  * Letting the client act as a WebSockets-powered REST API for the server.
