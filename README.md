@@ -103,4 +103,4 @@ todoSocket.remove('todos/1');
 
 ## ToDo
 - Make authToken optional
-- Complete documentation
+- Make documentation better
