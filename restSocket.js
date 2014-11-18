@@ -24,9 +24,10 @@
 		if(!("WebSocket" in window)){
 			return error('WebSockets is not supported in this browser.');
 		}
-		if(!settings || !settings.path || !settings.authToken){
-			return error('You must include a path and authToken in settings.');
-		} else {
+		if(!settings || !settings.path){
+			return error('You must include a path in settings.');
+		}
+		if(settings.authToken){
 			var authToken = settings.authToken;
 			if(typeof authToken === 'function'){
 				authToken = authToken();
@@ -93,13 +94,27 @@
 			S.requestQueue = [];
 		}
 		
+		function initReadyState(){
+			if(typeof settings.success === 'function'){
+				settings.success();
+			}
+			if(S.requestQueue.length > 0){
+				processRequestQueue();
+			}
+			S.ready = true;
+		}
+		
 		S.openConnection = _.throttle(function(){
 			// open the actual WebSocket connection
 			S.socket = new WebSocket('ws://' + settings.path);
 			
 			// handle WebSocket events
 			S.socket.onopen = function(){
-				S.socket.send(settings.authToken);
+				if(settings.authToken){
+					S.socket.send(settings.authToken);
+				} else {
+					initReadyState();
+				}
 			};
 			S.socket.onerror = function(){
 				if(typeof settings.error === 'function'){
@@ -108,17 +123,11 @@
 			};
 			S.socket.onmessage = function(event){
 				var data = event.data;
-				if(!S.ready && typeof data === 'string' && data == 'Authentication successful'){
-					if(typeof settings.success === 'function'){
-						settings.success();
-					}
-					if(S.requestQueue.length > 0){
-						processRequestQueue();
-					}
-					S.ready = true;
+				if(!S.ready && settings.authToken && typeof data === 'string' && data == 'Authentication successful'){
+					initReadyState();
 				} else if(!S.ready || typeof data !== 'object' || !data.resource || !data.method || !(data.error || (data.payload && typeof data.payload === 'object'))){
 					var reason = 'data does not match communication pattern';
-					if(!S.ready){
+					if(!S.ready && settings.authToken){
 						reason = 'authorization has not completed';
 					}
 					console.log('restSocket: Incoming message from server ignored because ' + reason + '. Event output below:');
