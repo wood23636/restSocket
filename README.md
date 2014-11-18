@@ -117,10 +117,3 @@ Error messages from the server look like this:
 `todoSocket.getRequestQueue()` returns the current request queue.
 
 `todoSocket.reopen()` will attempt to reopen the restSocket connection.
-
-## Supported Methods
-- GET
-- PATCH
-- POST
-- PUT
-- DELETE
