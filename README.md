@@ -106,7 +106,7 @@ Error messages from the server look like this:
 }
 ```
 
-## Extras / Debugging
+### Extras / Debugging
 
 `todoSocket.getPaths()` returns your client-side REST API in JSON form.
 
