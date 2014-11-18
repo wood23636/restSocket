@@ -124,7 +124,3 @@ Error messages from the server look like this:
 - POST
 - PUT
 - DELETE
-
-## ToDo
-- Make authToken optional
-- Make documentation better
