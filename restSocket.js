@@ -125,15 +125,22 @@
 				var data = event.data;
 				if(!S.ready && settings.authToken && typeof data === 'string' && data == 'Authentication successful'){
 					initReadyState();
-				} else if(!S.ready || typeof data !== 'object' || !data.resource || !data.method || !(data.error || (data.payload && typeof data.payload === 'object'))){
+				} else if(!S.ready || typeof data !== 'object' || !data.resource || !data.method || !(data.error || data.payload)){
 					var reason = 'data does not match communication pattern';
 					if(!S.ready && settings.authToken){
 						reason = 'authorization has not completed';
 					}
-					console.log('restSocket: Incoming message from server ignored because ' + reason + '. Event output below:');
-					console.log(event);
-					return false;
+					return error('Incoming message from server ignored because ' + reason + '.');
 				} else {
+					if(data.payload && typeof data.payload === 'string'){
+						try {
+							data.payload = JSON.parse(data.payload);
+						} catch(e){
+							return error('Could not parse payload to JSON.');
+						}
+					} else if(typeof data.payload !== 'object'){
+						return error('Payload is not JSON or stringified JSON.');
+					}
 					handleServerRequest(data);
 				}
 			};
@@ -204,7 +211,11 @@
 				method: method
 			};
 			if(['PATCH', 'POST', 'PUT'].indexOf(method) > -1){
-				requestObj.payload = data;
+				if(settings.stringifyPayloadToServer){
+					requestObj.payload = JSON.stringify(data);
+				} else {
+					requestObj.payload = data;
+				}
 			}
 			
 			if(S.ready){
