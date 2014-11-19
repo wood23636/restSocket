@@ -18,12 +18,13 @@ Then initiate a restSocket like so:
 
 ```js
 var todoSocket = new restSocket({
-	path: 'localhost:8080/todo',
+	path: 'localhost:8080/todo', // this is the only required part of this settings object
 	authToken: function(){
 		// logic to get an authToken
 		// this function can be replaced with a simple string
 		return '455B1D51-CC4C-40C1-BEFB-579CD18D905B';
 	},
+	stringifyPayloadToServer: true, // defaults to false
 	success: function(){
 		// stuff to do after connection is authorized
 	},
