@@ -1,12 +1,12 @@
 /*!
- * RestSocket
+ * RestSocket v0.2.0
  * https://github.com/bracketdash/restSocket
  * 
  * A library for:
  * Letting the client act as a WebSockets-powered REST API for the server.
  * Letting the client poll the server like a REST API through WebSockets.
  * 
- * Requires LoDash v2.4.1
+ * Requires STOMP v2.3.4 and LoDash v2.4.1
  * 
  * Copyright 2014 Michael Hatch
  * Released under the MIT license
@@ -15,6 +15,8 @@
 (function(){
 	
 	function restSocket(settings){
+		
+		// error message handler
 		function error(msg){
 			throw 'restSocket Error: ' + msg;
 			return false;
@@ -24,23 +26,15 @@
 		if(!("WebSocket" in window)){
 			return error('WebSockets is not supported in this browser.');
 		}
-		if(!settings || !settings.path){
-			return error('You must include a path in settings.');
-		}
-		if(settings.authToken){
-			var authToken = settings.authToken;
-			if(typeof authToken === 'function'){
-				authToken = authToken();
-			}
-			if(typeof authToken !== 'string'){
-				return error('The authToken must be a string.');
-			}
+		if(typeof settings !== 'object' || typeof settings.path !== 'string' || typeof settings.login !== 'string' || typeof settings.password !== 'string'){
+			return error('restSocket requires a settings object with at least a path, login, and password.');
 		}
 		
 		// keep track of stuff
 		var S = this;
 		S.ready = false;
 		
+		// split the path into regexp pattern and keys
 		function explodePath(path) {
 			var ret = {
 					originalPath: path,
@@ -63,127 +57,74 @@
 			return ret;
 		}
 		
-		function handleServerRequest(data){
-			_.each($.paths, function(path){
-				if(path.regexp.test(data.resource)){
-					var matches = data.resource.match(path.regexp);
+		// produce a more digestible paths object based on the API
+		S.paths = [];
+		if(typeof settings.api === 'object'){
+			_.each(settings.api, function(apiMethods, apiPath){
+				var path = explodePath(apiPath);
+				path.methods = apiMethods;
+				S.paths.push(path);
+			});
+		}
+		
+		S.handleServerRequest(message){
+			_.each(S.paths, function(path){
+				if(path.regexp.test(message.headers.subscription)){
+					var matches = message.headers.subscription.match(path.regexp);
 					var args = {};
 					_.each(path.keys, function(key, index){
 						if(matches.length > index){
 							args[key] = matches[index+1];
 						}
 					});
-					_.each(path.methods, function(method){
-						if(method.method == data.method){
-							if(data.payload){
-								method.success(data.payload, args);
-							}
-							if(data.error){
-								method.error(data.error, args);
-							}
+					_.each(path.methods, function(action, method){
+						if(method == message.headers.method){
+							action(message.body, args);
 						}
 					});
 				}
 			});
 		}
 		
-		function processRequestQueue(){
-			_.each(S.requestQueue, function(requestObj){
-				S.socket.send(requestObj);
-			});
-			S.requestQueue = [];
-		}
-		
-		function initReadyState(){
-			if(typeof settings.success === 'function'){
-				settings.success();
-			}
-			if(S.requestQueue.length > 0){
-				processRequestQueue();
-			}
-			S.ready = true;
-		}
-		
 		S.openConnection = _.throttle(function(){
-			// open the actual WebSocket connection
-			S.socket = new WebSocket('ws://' + settings.path);
-			
-			// handle WebSocket events
-			S.socket.onopen = function(){
-				if(settings.authToken){
-					S.socket.send(settings.authToken);
-				} else {
-					initReadyState();
+			S.socket = Stomp.client('ws://' + settings.path).connect(settings.login, settings.password, function(){
+				_.each(S.paths, function(path){
+					S.socket.subscribe(path.originalPath, S.handleServerRequest);
+				});
+				if(typeof settings.onConnect === 'function'){
+					settings.onConnect();
 				}
-			};
-			S.socket.onerror = function(){
-				if(typeof settings.error === 'function'){
-					settings.error();
+				processRequestQueue();
+			}, function(err){
+				if(typeof settings.onConnectionError === 'function'){
+					settings.onConnectionError(err);
 				}
-			};
-			S.socket.onmessage = function(event){
-				var data = event.data;
-				if(!S.ready && settings.authToken && typeof data === 'string' && data == 'Authentication successful'){
-					initReadyState();
-				} else if(!S.ready || typeof data !== 'object' || !data.resource || !data.method || !(data.error || data.payload)){
-					var reason = 'data does not match communication pattern';
-					if(!S.ready && settings.authToken){
-						reason = 'authorization has not completed';
+			});
+			S.socket.debug = function(msg){
+				if(msg.indexOf('Lost connection') > -1){
+					S.ready = false;
+					if(settings.autoReconnect){
+						S.openConnection();
 					}
-					return error('Incoming message from server ignored because ' + reason + '.');
-				} else {
-					if(data.payload && typeof data.payload === 'string'){
-						try {
-							data.payload = JSON.parse(data.payload);
-						} catch(e){
-							return error('Could not parse payload to JSON.');
-						}
-					} else if(typeof data.payload !== 'object'){
-						return error('Payload is not JSON or stringified JSON.');
+					if(typeof settings.onClose === 'function'){
+						settings.onClose(event);
 					}
-					handleServerRequest(data);
-				}
-			};
-			S.socket.onclose = function(event){
-				S.ready = false;
-				if(typeof settings.onclose === 'function'){
-					settings.onclose(event);
 				}
 			};
 		}, 2000);
-		
-		// process the API
-		S.paths = [];
-		if(typeof settings.api === 'object'){
-			_.each(settings.api, function(apiMethods, apiPath){
-				var path = explodePath(apiPath);
-				path.methods = [];
-				_.each(apiMethods, function(apiAction, apiMethod){
-					var method = {
-						method: apiMethod
-					};
-					if(typeof apiAction === 'function'){
-						method.success = apiAction;
-					} else if(typeof apiAction === 'object'){
-						if(typeof apiAction.success === 'function'){
-							method.success = apiAction.success;
-						}
-						if(typeof apiAction.error === 'function'){
-							method.error = apiAction.error;
-						}
-					}
-					path.methods.push(method);
-				});
-				S.paths.push(path);
-			});
-		}
 		
 		// open the connection for the first time
 		S.openConnection();
 		
 		// handle client requests to server
 		S.requestQueue = [];
-		S.handleClientRequests = function(resource, method, data){
+		function processRequestQueue(){
+			_.each(S.requestQueue, function(sendObj){
+				S.socket.send(sendObj.resource, sendObj.headers, sendObj.body);
+			});
+			S.requestQueue = [];
+		}
+		S.handleClientRequests = function(resource, method, data, notReady){
 			
 			// handle errors
 			if(!resource || !method){
@@ -206,24 +147,23 @@
 			}
 			
 			// set up request object
-			var requestObj = {
+			var sendObj = {
 				resource: path,
-				method: method
+				headers: {
+					method: method,
+				},
+				body: JSON.stringify(data)
 			};
-			if(['PATCH', 'POST', 'PUT'].indexOf(method) > -1){
-				if(settings.stringifyPayloadToServer){
-					requestObj.payload = JSON.stringify(data);
-				} else {
-					requestObj.payload = data;
-				}
-			}
 			
 			if(S.ready){
 				// make the request
-				S.socket.send(requestObj);
+				S.socket.send(sendObj.resource, sendObj.headers, sendObj.body);
 			} else {
 				// place requests in a queue to be executed when the connection is ready
-				S.requestQueue.push(requestObj);
+				S.requestQueue.push(sendObj);
+				if(typeof notReady === 'function'){
+					notReady();
+				}
 			}
 		};
 	};
@@ -232,7 +172,7 @@
 		getPaths: function(){
 			return this.paths;
 		},
-		getRawSocket: function(){
+		getRawSTOMP: function(){
 			return this.socket;
 		},
 		getReadyState: function(){
@@ -241,23 +181,29 @@
 		getRequestQueue: function(){
 			return this.requestQueue;
 		},
-		reopen: function(){
-			this.openConnection();
+		get: function(resource, params, notReady){
+			this.handleClientRequests(resource, 'GET', params, notReady);
 		},
-		get: function(resource, params){
-			this.handleClientRequests(resource, 'GET', params);
+		patch: function(resource, payload, notReady){
+			this.handleClientRequests(resource, 'PATCH', payload, notReady);
 		},
-		patch: function(resource, payload){
-			this.handleClientRequests(resource, 'PATCH', payload);
+		post: function(resource, payload, notReady){
+			this.handleClientRequests(resource, 'POST', payload, notReady);
 		},
-		post: function(resource, payload){
-			this.handleClientRequests(resource, 'POST', payload);
+		put: function(resource, payload, notReady){
+			this.handleClientRequests(resource, 'PUT', payload, notReady);
 		},
-		put: function(resource, payload){
-			this.handleClientRequests(resource, 'PUT', payload);
+		remove: function(resource, notReady){
+			this.handleClientRequests(resource, 'DELETE', notReady);
 		},
-		remove: function(resource){
-			this.handleClientRequests(resource, 'DELETE');
+		mirror: function(resource, method, data){
+			this.handleServerRequest({
+				headers: {
+					subscription: resource,
+					method: method
+				},
+				body: JSON.parse(data)
+			});
 		}
 	});
 	
