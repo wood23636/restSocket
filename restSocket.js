@@ -1,5 +1,5 @@
 /*!
- * RestSocket v0.2.0
+ * RestSocket v0.2.1
  * https://github.com/bracketdash/restSocket
  * 
  * A library for:
@@ -67,7 +67,7 @@
 			});
 		}
 		
-		S.handleServerRequest(message){
+		S.handleServerRequest = function(message){
 			_.each(S.paths, function(path){
 				if(path.regexp.test(message.headers.subscription)){
 					var matches = message.headers.subscription.match(path.regexp);
