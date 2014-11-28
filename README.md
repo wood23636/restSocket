@@ -24,41 +24,55 @@ var todoSocket = new restSocket({
 	autoReconnect: true,
 	onConnect: function(){},
 	onConnectionError: function(error){},
-	onClose: function(event){},
-	api: {
-		'/todos': {
-			'PATCH': function(payload){},
-			'POST': function(payload){}
-		},
-		'/todos/:id': {
-			'PUT': function(payload, args){
-				// args.id
-			}
-		}
-	}
+	onClose: function(event){}
 });
 ```
 
 Then make requests to the server like so:
 
 ```js
-todoSocket.get('todos');
+// complete example
+socket.send('/path/to/destination', 'METHOD', {body:'will be stringified'}, {
+	other: headers,
+	can: be,
+	useful: too
+}, notReadyCallback);
 
-todoSocket.patch('todos/2', {done: true});
+// example without headers
+socket.send('/path/to/destination', 'METHOD', {body:'will be stringified'});
 
-todoSocket.post('todos', {description: 'This thing', done: false});
+// example without a body
+socket.send('/path/to/destination', 'METHOD', {}, {other:headers, can:be, useful:too});
 
-todoSocket.put('todos/1', {id: 2, description: 'Something else', done: false})
+// example without body or headers, but with a notReadyCallback
+socket.send('/path/to/destination', 'METHOD', notReadyCallback);
 
-todoSocket.remove('todos/1');
+// example with body but no headers, with notReadyCallback
+socket.send('/path/to/destination', 'METHOD', {body:'will be stringified'}, notReadyCallback);
+
+// minimal example
+socket.send('/path/to/destination', 'METHOD');
 ```
 
-### Extras / Debugging
+Subscribe and unsubscribe:
 
-`todoSocket.getPaths()` returns your client-side REST API in JSON form.
+```js
+// complete example with a callback that overrides default operations and additional headers
+var mySubscription1 = socket.subscribe('/path/to/destination', callback, {additional:headers});
 
-`todoSocket.getRawSTOMP()` returns the raw STOMP (current connection only).
+// examples that doesn't care about other headers but still overrides default operations
+var mySubscription2 = socket.subscribe('/path/to/destination', function(message, destinationData){});
 
-`todoSocket.getReadyState()` returns whether the connection is ready for requests.
+// minimal example
+var mySubscription3 = socket.subscribe('/path/to/destination');
 
-`todoSocket.getRequestQueue()` returns the current request queue.
+// unsubscribe from the first subscription
+mySubscription1.unsubscribe();
+```
+
+### GET Shortcut
+
+A quick shortcut that behaves like old school RESTful GET requests:
+```js
+todoSocket.get(destination, additionalHeaders, callback, subscriptionHeaders)
+```
