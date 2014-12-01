@@ -1,5 +1,5 @@
 /*!
- * RestSocket v0.3.0
+ * RestSocket v0.3.1
  * https://github.com/bracketdash/restSocket
  * 
  * Requires STOMP v2.3.4 and LoDash v2.4.1
@@ -74,7 +74,7 @@
 		}, 2000);
 		S.openConnection();
 		
-		function subscriptionRouter(message){
+		S.subscriptionRouter = function(message){
 			
 			// try to parse the body
 			var body = null;
@@ -149,8 +149,8 @@
 			} else if(body){
 				if(_.isArray(destinationData)){
 					if(_.isArray(body)){
-						// PATCH collection
-						// TODO: Patch the collection at the destination with the body collection, then send an ACK frame.
+						// PUT collection
+						destinationData = body;
 					} else if(_.isPlainObject(body)){
 						// POST item
 						destinationData.push(body);
@@ -158,7 +158,7 @@
 				} else if(_.isPlainObject(destinationData)){
 					if(_.isPlainObject(body)){
 						// PATCH item
-						// TODO: Patch the object at the destination with the body object, then send an ACK frame.
+						_.assign(destinationData, body);
 					}
 				}
 			}
@@ -178,7 +178,7 @@
 				subscriptionHeaders = callback;
 			}
 			var onmessage = function(message){
-				var callback = subscriptionRouter;
+				var callback = S.subscriptionRouter;
 				if(_.isFunction(overrideCallback)){
 					callback = overrideCallback;
 				}
@@ -259,12 +259,12 @@
 			}, subscriptionHeaders);
 		},
 		mirror: function(destination, method, data){
-			this.handleServerRequest({
+			this.subscriptionRouter({
 				headers: {
-					subscription: resource,
+					destination: destination,
 					method: method
 				},
-				body: JSON.parse(data)
+				body: JSON.stringify(data);
 			});
 		}
 	});
