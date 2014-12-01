@@ -264,7 +264,7 @@
 					destination: destination,
 					method: method
 				},
-				body: JSON.stringify(data);
+				body: JSON.stringify(data)
 			});
 		}
 	});
