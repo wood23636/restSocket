@@ -1,3 +1,5 @@
+![restSocket Logo](http://i.imgur.com/Zd5SUCi.jpg)
+
 restSocket
 ==========
 
